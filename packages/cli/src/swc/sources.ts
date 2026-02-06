@@ -4,6 +4,8 @@ import { stat } from "fs";
 import { join, basename, extname } from "path";
 import { minimatch } from "minimatch";
 
+import type { FSWatcher } from "chokidar";
+
 /**
  * Find all input files based on source globs
  */
@@ -112,7 +114,7 @@ export async function watchSources(
     includeDotfiles = false,
     only: string[] = [],
     ignore: string[] = []
-) {
+): Promise<FSWatcher> {
     const chokidar = await requireChokidar();
     return chokidar.watch(sources, {
         ignored: (filename: string) => {
