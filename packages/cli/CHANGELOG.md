@@ -1,5 +1,15 @@
 # @swc/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- 12e5b06: feat(cli): Update chokidar to v5
+
+### Patch Changes
+
+- 12e5b06: feat(cli): Update chokidar to v5
+
 ## 0.7.10
 
 ### Patch Changes
