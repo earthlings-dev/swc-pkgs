@@ -1,20 +1,24 @@
 {
-    "compilerOptions": {
-        "target": "es2019",
-        "useDefineForClassFields": true,
-        "module": "commonjs",
-        "baseUrl": "./",
-        "paths": {},
-        "resolveJsonModule": true,
-        "declaration": true,
-        "sourceMap": true,
-        "downlevelIteration": true,
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true,
-        "skipLibCheck": true,
-        "rootDir": "."
-    },
-    "include": ["lib", "tests"],
-    "exclude": ["examples"]
+  "compilerOptions": {
+    "target": "es2022",
+    "useDefineForClassFields": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "baseUrl": "./",
+    "paths": {},
+    "resolveJsonModule": true,
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": [
+    "lib",
+    "tests"
+  ],
+  "exclude": [
+    "examples"
+  ]
 }

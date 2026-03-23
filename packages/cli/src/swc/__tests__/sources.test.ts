@@ -1,13 +1,39 @@
-import { globSources, splitCompilableAndCopyable } from "../sources";
-import fs from "fs";
-import { glob } from "tinyglobby";
+import { afterAll, beforeEach, describe, expect, it, jest, mock } from "bun:test";
+import { createFsMock } from "./helpers/mockFs";
 
-jest.mock("fs");
-jest.mock("tinyglobby");
+const actualFs = await import("node:fs");
+const fsMock = createFsMock();
+const globMock = jest.fn();
+
+const createMockedFsModule = () => ({
+    ...actualFs,
+    default: {
+        ...(actualFs.default ?? {}),
+        readFileSync: fsMock.readFileSync,
+        stat: fsMock.stat,
+    },
+    readFileSync: fsMock.readFileSync,
+    stat: fsMock.stat,
+});
+
+mock.module("fs", createMockedFsModule);
+mock.module("node:fs", createMockedFsModule);
+
+mock.module("tinyglobby", () => ({
+    glob: globMock,
+}));
+
+const { globSources, splitCompilableAndCopyable } = await import("../sources");
+
+afterAll(() => {
+    mock.restore();
+});
 
 describe("globSources", () => {
     beforeEach(() => {
-        (fs as any).resetMockStats();
+        fsMock.resetMockFiles();
+        fsMock.resetMockStats();
+        globMock.mockReset();
     });
 
     it("exclude dotfiles sources when includeDotfiles=false", async () => {
@@ -17,46 +43,43 @@ describe("globSources", () => {
     });
 
     it("include dotfiles sources when includeDotfiles=true", async () => {
-        (fs as any).setMockStats({ ".dotfile": { isDirectory: () => false } });
+        fsMock.setMockStats({ ".dotfile": { isDirectory: () => false } });
         const files = await globSources([".dotfile"], [], [], true);
 
         expect([...files]).toEqual([".dotfile"]);
     });
 
     it("include multiple file sources", async () => {
-        (fs as any).setMockStats({ ".dotfile": { isDirectory: () => false } });
-        (fs as any).setMockStats({ file: { isDirectory: () => false } });
+        fsMock.setMockStats({ ".dotfile": { isDirectory: () => false } });
+        fsMock.setMockStats({ file: { isDirectory: () => false } });
         const files = await globSources([".dotfile", "file"], [], [], true);
 
         expect([...files]).toEqual([".dotfile", "file"]);
     });
 
     it("exclude files that errors on stats", async () => {
-        (fs as any).setMockStats({ ".dotfile": { isDirectory: () => false } });
-        (fs as any).setMockStats({ file: new Error("Failed stat") });
+        fsMock.setMockStats({ ".dotfile": { isDirectory: () => false } });
+        fsMock.setMockStats({ file: new Error("Failed stat") });
         const files = await globSources([".dotfile", "file"], [], [], true);
 
         expect([...files]).toEqual([".dotfile"]);
     });
 
     it("includes all files from directory", async () => {
-        (fs as any).setMockStats({ directory: { isDirectory: () => true } });
-        (fs as any).setMockStats({ file: { isDirectory: () => false } });
+        fsMock.setMockStats({ directory: { isDirectory: () => true } });
+        fsMock.setMockStats({ file: { isDirectory: () => false } });
+        globMock.mockResolvedValue(["fileDir1", "fileDir2"]);
 
-        (glob as unknown as jest.Mock).mockResolvedValue([
-            "fileDir1",
-            "fileDir2",
-        ]);
         const files = await globSources(["file", "directory"], [], [], true);
 
         expect([...files]).toEqual(["file", "fileDir1", "fileDir2"]);
     });
 
     it("exclude files from directory that fail to glob", async () => {
-        (fs as any).setMockStats({ directory: { isDirectory: () => true } });
-        (fs as any).setMockStats({ file: { isDirectory: () => false } });
+        fsMock.setMockStats({ directory: { isDirectory: () => true } });
+        fsMock.setMockStats({ file: { isDirectory: () => false } });
+        globMock.mockRejectedValue(new Error("Failed"));
 
-        (glob as unknown as jest.Mock).mockRejectedValue(new Error("Failed"));
         const files = await globSources(["file", "directory"], [], [], true);
 
         expect([...files]).toEqual(["file"]);
@@ -65,6 +88,7 @@ describe("globSources", () => {
 
 describe("splitCompilableAndCopyable", () => {
     const extensions = [".ts"];
+
     it("separate compilable and copyable when copyFiles=true", () => {
         const files = ["test.ts", "test.txt"];
         const [compilable, copyable] = splitCompilableAndCopyable(

@@ -1,6 +1,7 @@
 {
-    "name": "example",
+    "name": "@swc/swc-loader-example-sync",
     "version": "1.0.0",
+    "private": true,
     "main": "index.js",
     "license": "MIT",
     "scripts": {

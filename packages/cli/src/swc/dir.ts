@@ -1,5 +1,6 @@
 import { existsSync, promises } from "fs";
-import { dirname, resolve } from "path";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 import Piscina from "piscina";
 import { stderr } from "process";
 import { format } from "util";
@@ -15,18 +16,7 @@ import {
 } from "./sources";
 
 import type { Options } from "@swc/core";
-
-declare module "fs" {
-    namespace promises {
-        /**
-         * For node > 14 we want to use rm instead of rmdir
-         * We need to augment node v12 types
-         */
-        function rm(dir: string, option: object): void;
-    }
-}
-
-const { mkdir, rmdir, rm, copyFile, unlink } = promises;
+const { mkdir, rm, copyFile, unlink } = promises;
 
 const recursive = { recursive: true };
 
@@ -48,9 +38,9 @@ async function beforeStartCompilation(cliOptions: CliOptions) {
     const { outDir, deleteDirOnStart } = cliOptions;
 
     if (deleteDirOnStart) {
-        const exists = await existsSync(outDir);
+        const exists = existsSync(outDir);
         if (exists) {
-            rm ? await rm(outDir, recursive) : await rmdir(outDir, recursive);
+            await rm(outDir, { recursive: true, force: true });
         }
     }
 }
@@ -126,7 +116,7 @@ async function initialCompilation(
         }
     } else {
         const workers = new Piscina({
-            filename: resolve(__dirname, "./dirWorker.js"),
+            filename: fileURLToPath(new URL("./dirWorker.ts", import.meta.url)),
             maxThreads: cliOptions.workers,
             concurrentTasksPerWorker: 2,
         });

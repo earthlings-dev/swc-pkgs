@@ -1,8 +1,8 @@
 import slash from "slash";
 import { dirname, relative } from "path";
 import { CompileStatus } from "./constants";
-import { compile, getDest, mapDtsExt, mapTsExt } from "./util";
-import { outputResult } from "./compile";
+import { outputResult, compile } from "./compile";
+import { getDest, mapDtsExt, mapTsExt } from "./util";
 
 import type { Options } from "@swc/core";
 import type { CliOptions } from "./options";

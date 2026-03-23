@@ -1,11 +1,37 @@
+import {
+    afterAll,
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    jest,
+    mock,
+} from "bun:test";
 import type { Options } from "@swc/core";
+import type { CliOptions } from "../options";
 import deepmerge from "deepmerge";
-import fs from "fs";
 import { resolve } from "path";
+import { createFsMock } from "./helpers/mockFs";
 
-jest.mock("fs");
+const actualFs = await import("node:fs");
+const fsMock = createFsMock();
+const previousNodeEnv = process.env.NODE_ENV;
 
-import parserArgs, { CliOptions, initProgram } from "../options";
+const createMockedFsModule = () => ({
+    ...actualFs,
+    default: {
+        ...(actualFs.default ?? {}),
+        readFileSync: fsMock.readFileSync,
+    },
+    readFileSync: fsMock.readFileSync,
+});
+
+mock.module("fs", createMockedFsModule);
+mock.module("node:fs", createMockedFsModule);
+
+const { default: parserArgs, initProgram } = await import("../options");
 
 interface ParserArgsReturn {
     swcOptions: Options;
@@ -58,9 +84,15 @@ describe("parserArgs", () => {
     let defaultResult: ParserArgsReturn;
 
     beforeEach(() => {
+        process.env.NODE_ENV = "test";
         defaultResult = createDefaultResult();
         initProgram();
-        (fs as any).resetMockFiles();
+        fsMock.resetMockFiles();
+    });
+
+    afterAll(() => {
+        process.env.NODE_ENV = previousNodeEnv;
+        mock.restore();
     });
 
     it("minimal args returns default result", async () => {
@@ -91,12 +123,13 @@ describe("parserArgs", () => {
     });
 
     describe("errors", () => {
-        let mockExit: jest.SpyInstance;
-        let mockConsoleError: jest.SpyInstance;
+        let mockExit: ReturnType<typeof jest.spyOn>;
+        let mockConsoleError: ReturnType<typeof jest.spyOn>;
 
         beforeAll(() => {
-            //@ts-expect-error
-            mockExit = jest.spyOn(process, "exit").mockImplementation(() => {});
+            mockExit = jest
+                .spyOn(process, "exit")
+                .mockImplementation(() => undefined as never);
             mockConsoleError = jest
                 .spyOn(console, "error")
                 .mockImplementation(() => {});
@@ -234,13 +267,9 @@ describe("parserArgs", () => {
 
     describe("--config", () => {
         it("throws with no config", async () => {
-            let mockConsoleError: jest.SpyInstance;
-
-            mockConsoleError = jest
+            const mockStderrWrite = jest
                 .spyOn(process.stderr, "write")
-                .mockImplementation(() => {
-                    return true;
-                });
+                .mockImplementation(() => true);
 
             const args = [
                 "node",
@@ -250,7 +279,7 @@ describe("parserArgs", () => {
             ];
             expect(() => parserArgs(args)).toThrow();
 
-            mockConsoleError.mockRestore();
+            mockStderrWrite.mockRestore();
         });
 
         it("react development", async () => {
@@ -320,7 +349,7 @@ describe("parserArgs", () => {
 
     describe("--cli-config-file", () => {
         it("reads a JSON config file with both camel and kebab case options", async () => {
-            (fs as any).setMockFile(
+            fsMock.setMockFile(
                 resolve(process.cwd(), "/swc/cli.json"),
                 JSON.stringify({
                     outFileExtension: "mjs",
@@ -345,7 +374,7 @@ describe("parserArgs", () => {
         });
 
         it("reads a JSON but options are overriden from CLI", async () => {
-            (fs as any).setMockFile(
+            fsMock.setMockFile(
                 resolve(process.cwd(), "/swc/cli.json"),
                 JSON.stringify({
                     outFileExtension: "mjs",
@@ -371,14 +400,13 @@ describe("parserArgs", () => {
         });
 
         describe("exits", () => {
-            let mockExit: jest.SpyInstance;
-            let mockConsoleError: jest.SpyInstance;
+            let mockExit: ReturnType<typeof jest.spyOn>;
+            let mockConsoleError: ReturnType<typeof jest.spyOn>;
 
             beforeEach(() => {
                 mockExit = jest
                     .spyOn(process, "exit")
-                    // @ts-expect-error
-                    .mockImplementation(() => {});
+                    .mockImplementation(() => undefined as never);
                 mockConsoleError = jest
                     .spyOn(console, "error")
                     .mockImplementation(() => {});
@@ -404,7 +432,7 @@ describe("parserArgs", () => {
             });
 
             it("if the config file is not valid JSON", async () => {
-                (fs as any).setMockFile("/swc/cli.json", "INVALID");
+                fsMock.setMockFile("/swc/cli.json", "INVALID");
 
                 const args = [
                     "node",

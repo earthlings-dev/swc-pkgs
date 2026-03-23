@@ -1,14 +1,8 @@
 {
     "name": "swc-info",
-    "packageManager": "pnpm@8.6.7",
     "version": "0.1.16",
     "description": "CLI tool to help issue reporting for swc",
     "sideEffects": false,
-    "scripts": {
-        "build": "tsc",
-        "prepublishOnly": "pnpm build",
-        "prepack": "pnpm build"
-    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/swc-project/pkgs.git"
@@ -29,8 +23,26 @@
     },
     "homepage": "https://swc.rs",
     "devDependencies": {
-        "@types/node": "^20.11.16",
-        "typescript": "^5.8.3"
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "@types/bun": "catalog:"
     },
-    "bin": "bin/swc-info.js"
+    "bin": "./bin/swc-info.ts",
+    "main": "./lib/index.ts",
+    "types": "./lib/index.ts",
+    "exports": {
+        ".": {
+            "bun": "./lib/index.ts",
+            "default": "./lib/index.ts"
+        },
+        "./package.json": "./package.json"
+    },
+    "engines": {
+        "bun": ">=1.3.11"
+    },
+    "files": [
+        "bin",
+        "lib",
+        "package.json"
+    ]
 }

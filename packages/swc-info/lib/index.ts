@@ -44,7 +44,8 @@ function interestingPackages(names: string[]): string {
     return names.map(interestingPackage).filter(Boolean).join("\n        ");
 }
 
-console.log(`
+export function formatInfo(): string {
+    return `
     Operating System:
         Platform: ${os.platform()}
         Arch: ${os.arch()}
@@ -53,8 +54,12 @@ console.log(`
         CPU: (${os.cpus().length} cores)
             Models: ${getUniqueCpuNames()}
 
-    Binaries:
-        Node: ${process.versions.node}
+    Runtime:
+        Bun: ${Bun.version}
+        Node Compatibility: ${process.versions.node}
+
+    Package Managers:
+        bun: ${getBinaryVersion("bun")}
         npm: ${getBinaryVersion("npm")}
         Yarn: ${getBinaryVersion("yarn")}
         pnpm: ${getBinaryVersion("pnpm")}
@@ -71,4 +76,13 @@ console.log(`
 
     Next.js info:
         output: N/A
-`);
+`;
+}
+
+export function main() {
+    console.log(formatInfo());
+}
+
+if (import.meta.main) {
+    main();
+}

@@ -1,44 +1,64 @@
+import { afterEach, describe, expect, it, mock } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { swcDir } from "../index";
 
-jest.mock("../compile", () => ({
-    outputResult: jest.fn(),
-}));
+const tempDirs: string[] = [];
 
-let mockComplie: any;
+function createFixture(source: string) {
+    const rootDir = mkdtempSync(join(process.cwd(), ".tmp-dir-callback-"));
+    const inputDir = join(rootDir, "input");
+    const filename = join(inputDir, "test.ts");
+    const outDir = join(rootDir, "out");
 
-jest.mock("../dirWorker", () => ({
-    __esModule: true,
-    default: () => mockComplie(),
-}));
+    mkdirSync(inputDir, { recursive: true });
+    writeFileSync(filename, source);
+    tempDirs.push(rootDir);
 
-const cliOptions: any = {
-    outDir: "./.temp/",
-    watch: false,
-    filenames: ["./src/swcx/"],
-    extensions: [".ts"],
-    stripLeadingPaths: true,
-    sync: true,
-};
-const swcOptions: any = {
+    return { filename, outDir };
+}
+
+afterEach(() => {
+    while (tempDirs.length > 0) {
+        rmSync(tempDirs.pop()!, { recursive: true, force: true });
+    }
+});
+
+const swcOptions = {
     jsc: {
-        target: "esnext",
-        externalHelpers: false,
-    },
-    module: {
-        type: "commonjs",
+        parser: {
+            syntax: "typescript" as const,
+        },
     },
 };
 
 describe("dir callbacks", () => {
     it("onSuccess should be called", async () => {
-        mockComplie = () => Promise.resolve(1); // mock complie success
-
-        const onSuccess = jest.fn();
-        const onFail = jest.fn();
+        const { filename, outDir } = createFixture("const value: number = 1;\n");
+        const onSuccess = mock();
+        const onFail = mock();
 
         await swcDir({
-            cliOptions: cliOptions,
-            swcOptions: swcOptions,
+            cliOptions: {
+                outDir,
+                watch: false,
+                filenames: [filename],
+                extensions: [".ts"],
+                stripLeadingPaths: false,
+                sync: true,
+                outFile: "",
+                filename: "",
+                workers: undefined,
+                sourceMapTarget: undefined,
+                copyFiles: false,
+                outFileExtension: "",
+                includeDotfiles: false,
+                deleteDirOnStart: false,
+                quiet: true,
+                only: [],
+                ignore: [],
+            },
+            swcOptions,
             callbacks: {
                 onSuccess,
                 onFail,
@@ -50,14 +70,31 @@ describe("dir callbacks", () => {
     });
 
     it("onFail should be called", async () => {
-        mockComplie = () => Promise.reject(new Error("fail")); // mock complie fail
-
-        const onSuccess = jest.fn();
-        const onFail = jest.fn();
+        const { filename, outDir } = createFixture("const value: = ;\n");
+        const onSuccess = mock();
+        const onFail = mock();
 
         await swcDir({
-            cliOptions: cliOptions,
-            swcOptions: swcOptions,
+            cliOptions: {
+                outDir,
+                watch: false,
+                filenames: [filename],
+                extensions: [".ts"],
+                stripLeadingPaths: false,
+                sync: true,
+                outFile: "",
+                filename: "",
+                workers: undefined,
+                sourceMapTarget: undefined,
+                copyFiles: false,
+                outFileExtension: "",
+                includeDotfiles: false,
+                deleteDirOnStart: false,
+                quiet: true,
+                only: [],
+                ignore: [],
+            },
+            swcOptions,
             callbacks: {
                 onSuccess,
                 onFail,

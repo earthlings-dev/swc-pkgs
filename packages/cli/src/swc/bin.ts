@@ -1,6 +1,10 @@
+#!/usr/bin/env bun
+
 import dirCommand from "./dir";
 import fileCommand from "./file";
 import parseArgs, { initProgram } from "./options";
+
+process.title = "swc";
 
 initProgram();
 const opts = parseArgs(process.argv);

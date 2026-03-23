@@ -1,20 +1,49 @@
-import { transformFile, transformFileSync } from "@swc/core";
+import { afterEach, describe, expect, it } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { compile } from "../compile";
 
-jest.mock("@swc/core");
+const tempDirs: string[] = [];
+
+function createFixture() {
+    const dir = mkdtempSync(join(tmpdir(), "swc-cli-compile-"));
+    const filename = join(dir, "input.ts");
+
+    writeFileSync(filename, "const value: number = 1;\n");
+    tempDirs.push(dir);
+
+    return filename;
+}
+
+afterEach(() => {
+    while (tempDirs.length > 0) {
+        rmSync(tempDirs.pop()!, { recursive: true, force: true });
+    }
+});
 
 describe("compile", () => {
-    it("compile with sync transform", async () => {
-        const options = {};
-        await compile("test.ts", options, true, undefined);
+    const options = {
+        jsc: {
+            parser: {
+                syntax: "typescript" as const,
+            },
+        },
+    };
 
-        expect(transformFileSync).toHaveBeenCalledWith("test.ts", options);
+    it("compile with sync transform", async () => {
+        const filename = createFixture();
+        const result = await compile(filename, options, true, undefined);
+
+        expect(result).toBeDefined();
+        expect(result?.code).toContain("value = 1;");
     });
 
     it("compile with async transform", async () => {
-        const options = {};
-        await compile("test.ts", options, false, undefined);
+        const filename = createFixture();
+        const result = await compile(filename, options, false, undefined);
 
-        expect(transformFile).toHaveBeenCalledWith("test.ts", options);
+        expect(result).toBeDefined();
+        expect(result?.code).toContain("value = 1;");
     });
 });

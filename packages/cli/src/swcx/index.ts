@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import minVersion from "semver/ranges/min-version";
 import { existsSync, readFileSync } from "fs";
@@ -7,6 +7,7 @@ import { spawn, StdioOptions } from "child_process";
 const { BinWrapper } = require("@xhmikosr/bin-wrapper");
 
 const { platform, arch } = process;
+process.title = "swcx";
 
 const SWC_CLI_ENV = {
     // Allow to specify specific version of swc binary version to use

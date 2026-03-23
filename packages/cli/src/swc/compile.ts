@@ -107,6 +107,18 @@ export async function compile(
             ? transformFileSync(filename, options)
             : await transformFile(filename, options);
 
+        if (result.map) {
+            // TODO: remove once fixed in core https://github.com/swc-project/swc/issues/1388
+            const sourceMap = JSON.parse(result.map);
+            if (options.sourceFileName) {
+                sourceMap["sources"][0] = options.sourceFileName;
+            }
+            if (options.sourceRoot) {
+                sourceMap["sourceRoot"] = options.sourceRoot;
+            }
+            result.map = JSON.stringify(sourceMap);
+        }
+
         return result;
     } catch (err: any) {
         if (!err.message.includes("ignored by .swcrc")) {

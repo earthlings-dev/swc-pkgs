@@ -1,23 +1,39 @@
-import { Options } from "@swc/core";
+import { afterEach, describe, expect, it } from "bun:test";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { CompileStatus } from "../constants";
 import handleCompile from "../dirWorker";
-import { CliOptions } from "../options";
-import * as utilModule from "../util";
-import * as compileModule from "../compile";
-import path from "path";
+import { getDest } from "../util";
 
-type HandleCompileOptions = {
-    cliOptions: CliOptions;
-    swcOptions: Options;
-    sync: false;
-    outDir: "outDir";
-    filename: string;
-    outFileExtension?: string;
-};
+const tempDirs: string[] = [];
 
-const createHandleCompileOptions = (
-    options?: Partial<HandleCompileOptions>
-): HandleCompileOptions => ({
-    cliOptions: {
+function createFixture() {
+    const rootDir = mkdtempSync(join(process.cwd(), ".tmp-dir-worker-"));
+    const inputDir = join(rootDir, "input");
+    const filename = join(inputDir, "test.ts");
+    const outDir = join(rootDir, "out");
+
+    mkdirSync(inputDir, { recursive: true });
+    writeFileSync(filename, "const value: number = 1;\n");
+    tempDirs.push(rootDir);
+
+    return { filename, outDir };
+}
+
+afterEach(() => {
+    while (tempDirs.length > 0) {
+        rmSync(tempDirs.pop()!, { recursive: true, force: true });
+    }
+});
+
+describe("dirWorker", () => {
+    const baseCliOptions = {
         outDir: "",
         outFile: "",
         filename: "",
@@ -35,94 +51,59 @@ const createHandleCompileOptions = (
         quiet: true,
         only: [],
         ignore: [],
-    },
-    swcOptions: {},
-    sync: false,
-    outDir: "outDir",
-    filename: "",
-    ...options,
-});
+    };
 
-jest.mock("../util", () => ({
-    ...jest.requireActual("../util"),
-    compile: jest
-        .fn()
-        .mockReturnValue(Promise.resolve({ code: "code", map: "map" })),
-}));
-
-jest.mock("../compile", () => ({
-    outputResult: jest.fn(),
-}));
-
-beforeEach(() => {
-    jest.clearAllMocks();
-});
-
-describe("dirWorker", () => {
-    it('should call "compile" with the corresponding extension when "outFileExtension" is undefined', async () => {
-        const filename = "test";
-        const options = createHandleCompileOptions({
-            filename: `${filename}.ts`,
-        });
-
-        try {
-            await handleCompile(options);
-        } catch (err) {
-            // We don't care about the error in this test, we want to make sure that "compile" was called
-        }
-
-        // Assert that subFunction was called with the correct parameter
-        expect(utilModule.compile).toHaveBeenCalledWith(
-            options.filename,
-            { sourceFileName: `../${options.filename}` },
-            options.sync,
-            path.join(
-                options.outDir,
-                `${filename}.${utilModule.mapTsExt(options.filename)}`
-            )
-        );
-
-        expect(compileModule.outputResult).toHaveBeenCalledWith({
-            output: {
-                code: "code",
-                map: "map",
+    const swcOptions = {
+        jsc: {
+            parser: {
+                syntax: "typescript" as const,
             },
-            sourceFile: `${filename}.ts`,
-            destFile: path.join(
-                options.outDir,
-                `${filename}.${utilModule.mapTsExt(filename)}`
-            ),
-            destDtsFile: path.join(
-                options.outDir,
-                `${filename}.${utilModule.mapDtsExt(filename)}`
-            ),
-            destSourcemapFile: path.join(
-                options.outDir,
-                `${filename}.${utilModule.mapTsExt(filename)}.map`
-            ),
-            options: { sourceFileName: `../${options.filename}` },
+        },
+    };
+
+    it('writes the corresponding extension when "outFileExtension" is undefined', async () => {
+        const { filename, outDir } = createFixture();
+        const expectedDest = getDest(filename, outDir, false, ".js");
+        const status = await handleCompile({
+            filename,
+            outDir,
+            sync: false,
+            cliOptions: {
+                ...baseCliOptions,
+                outDir,
+            },
+            swcOptions,
         });
+
+        expect(status).toBe(CompileStatus.Compiled);
+        expect(existsSync(expectedDest)).toBe(true);
+        expect(await Bun.file(expectedDest).text()).toContain("value = 1;");
     });
 
-    it('should call "compile" with "outFileExtension" when it is set in options', async () => {
-        const filename = "test";
-        const options = createHandleCompileOptions({
-            filename: `${filename}.ts`,
-            outFileExtension: "cjs",
+    it('writes "outFileExtension" when it is set in options', async () => {
+        const { filename, outDir } = createFixture();
+        const outFileExtension = "cjs";
+        const expectedDest = getDest(
+            filename,
+            outDir,
+            false,
+            `.${outFileExtension}`
+        );
+        const status = await handleCompile({
+            filename,
+            outDir,
+            sync: false,
+            cliOptions: {
+                ...baseCliOptions,
+                outDir,
+                outFileExtension,
+            },
+            swcOptions,
+            outFileExtension,
         });
 
-        try {
-            await handleCompile(options);
-        } catch (err) {
-            // We don't care about the error in this test, we want to make sure that "compile" was called
-        }
-
-        // Assert that subFunction was called with the correct parameter
-        expect(utilModule.compile).toHaveBeenCalledWith(
-            options.filename,
-            { sourceFileName: `../${options.filename}` },
-            options.sync,
-            path.join(options.outDir, `${filename}.${options.outFileExtension}`)
-        );
+        expect(status).toBe(CompileStatus.Compiled);
+        expect(existsSync(expectedDest)).toBe(true);
+        expect(await Bun.file(expectedDest).text()).toContain("value = 1;");
     });
 });

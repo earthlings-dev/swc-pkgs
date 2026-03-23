@@ -1,19 +1,16 @@
 {
     "name": "swc-extra-packages-workspace",
-    "packageManager": "pnpm@10.11.0",
     "private": true,
     "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/swc"
     },
     "scripts": {
-        "test": "lerna run test",
-        "lint": "lerna run lint"
+        "test": "bun run --filter '*' test",
+        "lint": "bun run --filter '*' lint"
     },
     "devDependencies": {
-        "@taplo/cli": "^0.5.2",
-        "cross-env": "^7.0.3",
-        "cspell": "^6.31.1",
-        "prettier": "^2"
+        "@taplo/cli": "catalog:",
+        "prettier": "catalog:"
     }
 }

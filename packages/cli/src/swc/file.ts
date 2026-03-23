@@ -1,10 +1,11 @@
-import swc from "@swc/core";
+import * as swc from "@swc/core";
 import path from "path";
 import slash from "slash";
 import { SourceMapConsumer, SourceMapGenerator } from "source-map";
 
 import { CliOptions } from "./options";
 import { globSources, isCompilableExtension, watchSources } from "./sources";
+import { compile } from "./compile";
 import * as util from "./util";
 
 export default async function ({
@@ -99,7 +100,7 @@ export default async function ({
                 ? path.relative(path.dirname(cliOptions.outFile), filename)
                 : filename
         );
-        return await util.compile(
+        return await compile(
             filename,
             {
                 ...swcOptions,

@@ -37,44 +37,6 @@ export async function transform(
     return swc.transform(code, opts);
 }
 
-export async function compile(
-    filename: string,
-    opts: swc.Options,
-    sync: boolean,
-    outputPath: string | undefined
-): Promise<swc.Output | void> {
-    opts = {
-        ...opts,
-    };
-    if (outputPath) {
-        opts.outputPath = outputPath;
-    }
-
-    try {
-        const result = sync
-            ? swc.transformFileSync(filename, opts)
-            : await swc.transformFile(filename, opts);
-
-        if (result.map) {
-            // TODO: fix this in core
-            // https://github.com/swc-project/swc/issues/1388
-            const sourceMap = JSON.parse(result.map);
-            if (opts.sourceFileName) {
-                sourceMap["sources"][0] = opts.sourceFileName;
-            }
-            if (opts.sourceRoot) {
-                sourceMap["sourceRoot"] = opts.sourceRoot;
-            }
-            result.map = JSON.stringify(sourceMap);
-        }
-        return result;
-    } catch (err: any) {
-        if (!err.message.includes("ignored by .swcrc")) {
-            throw err;
-        }
-    }
-}
-
 export function outputFile(
     output: swc.Output,
     filename: string,

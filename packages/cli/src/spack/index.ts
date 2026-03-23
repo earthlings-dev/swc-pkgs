@@ -1,9 +1,13 @@
+#!/usr/bin/env bun
+
 import { bundle } from "@swc/core";
 import { mkdir, writeFile } from "fs";
 import { basename, dirname, extname, join, relative } from "path";
 import { promisify } from "util";
 
 import parseSpackArgs from "./options";
+
+process.title = "spack";
 
 const write = promisify(writeFile);
 const makeDir = promisify(mkdir);
